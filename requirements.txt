@@ -1,0 +1,8 @@
+vosk
+flask
+werkzeug
+ollama  
+librosa 
+jinja2   
+soundfile
+

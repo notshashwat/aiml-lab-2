@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Speech Recorder</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+</head>
+<body>
+    <p>
+        <button id="startRecording">Start recording</button>
+        <button id="stopRecording" disabled>Stop recording</button>
+        
+        <h3 id="1"></h3>
+        <form hidden id="AC">
+            <label for="acno" >Account Number: </label>
+            <input type="text" name="acno" id="acno" value="acno">
+            <label for="name" >Name: </label>
+            <input type="text" name="name" id="name" value="name">
+            
+            <button type="submit" id="accountsubmit">Submit</button>
+        </form>
+        <form hidden id="Transfer">
+            <label for="acno2" >Account Number to whom you want to transfer money to: </label>
+            <input type="text" name="acno2" id="acno2" value="acno2">
+            
+            <label for="amount" > Amount to be paid</label>
+            <input type="text" name="amount" id="amount" value="amount">
+            
+            <button type="submit" id="transfersubmit">Submit</button>
+        </form>
+        
+    </p>
+</body>
+<script>
+    let auth_code = null;
+    let acc_no = null;
+    let name = null;
+    navigator
+        .mediaDevices
+        .getUserMedia({audio: true})
+        .then(stream => { handlerFunction(stream) });
+
+    function handlerFunction(stream) {
+        rec = new MediaRecorder(stream);
+        rec.ondataavailable = e => {
+            
+            audioChunks.push(e.data);
+            if (rec.state == "inactive") {
+                let blob = new Blob(audioChunks, {type: 'audio/mpeg-3'});
+                sendData(blob);
+            }
+        }
+    }
+    
+
+    function sendData(data) {
+       
+        if(auth_code === null){
+            $("#1").text("Hello! I am your personal banking companion. Please enter your details so I can assist you further in showing bank details or transferring funds.")
+            $("#AC").show()
+            $("#AC").on("submit",(e)=>{
+                e.preventDefault();
+                acc_no = $("#acno").serializeArray()[0].value
+                name = $("#name").serializeArray()[0].value
+                data = 
+                {
+                    ac : acc_no,
+                    name : name
+                }
+                // console.log(data);
+                getUser(data)
+            });
+            // $("#AC").hide()
+            return;
+        }
+
+        var form = new FormData();
+        form.append('file', data, 'data.mp3');
+        form.append('title', 'data.mp3');
+        //Chrome inspector shows that the post data includes a file and a title.
+        $.ajax({
+            type: 'POST',
+            url: '/send-record',
+            data: form,
+            cache: false,
+            processData: false,
+            contentType: false
+        }).done(function(data) {
+            console.log("here")
+            console.log(data)
+            switch(data){
+                case "GET_BALANCE" : 
+                    console.log("Get Due")
+                    
+                    data = 
+                        {
+                            acc_no : acc_no
+                        }
+                    getDetails(data);
+                    break;
+                case "TRANSFER":
+                    console.log("Transfer")
+                    $("#Transfer").show()
+                    $("#Transfer").on("submit",(e)=>{
+                        e.preventDefault();
+                        acc_no2 = $("#acno2").serializeArray()[0].value
+                        amount = $("#amount").serializeArray()[0].value
+                        
+                        data = 
+                        {
+                            acc_no1 : acc_no,
+                            acc_no2 : acc_no2,
+                            amount : amount
+                        }
+                        // console.log(data);
+                        transferMoney(data)
+                    });
+
+                    break;
+                    
+                default:
+                    console.log("Greeting!"); 
+                    handleLogin(); 
+            }
+        });
+    }
+
+    startRecording.onclick = e => {
+        console.log('Recording are started..');
+        startRecording.disabled = true;
+        stopRecording.disabled = false;
+        audioChunks = [];
+        rec.start();
+    };
+
+    stopRecording.onclick = e => {
+        console.log("Recording are stopped.");
+        startRecording.disabled = false;
+        stopRecording.disabled = true;
+        rec.stop();
+    };
+
+    function getUser(data){
+        $.ajax({
+            type: 'POST',
+            url: '/get-users',
+            contentType: 'application/json',
+            data: JSON.stringify(data)
+        }).done(function(data) {
+            auth_code = data //set the auth code
+            console.log("You have the auth code now ")
+            $("#1").text("You are authorized Now! Ask for bank details or funds transfer!")
+            $("#AC").hide();
+            
+
+        })
+    }
+
+    function getDetails(data){
+
+        $.ajax({
+            type: 'POST',
+            url: '/get-details',
+            contentType: 'application/json',
+            data: JSON.stringify(data)
+        }).done(function(data) {
+            //piper for saying the details
+            $("#1").text( "For account number "+data['acc_no']+", the balance is Rs."+data['balance'])
+            console.log("The account details are : ")
+
+
+            console.log(data)
+            // $("#AC").hide()
+
+        })
+    }
+    function transferMoney(data){
+
+        $.ajax({
+            type: 'POST',
+            url: '/transfer-money',
+            contentType: 'application/json',
+            data: JSON.stringify(data)
+        }).done(function(data) {
+            //piper for saying the details
+            $("#1").text(data)
+
+            console.log(data)
+            $("#Transfer").hide()
+
+        })
+        }
+</script>
+</html>
