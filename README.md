@@ -25,10 +25,14 @@ username : Shashwat
 account no. 69 \\
 username : Amruta
 
-Please note that llama intance we are using is running in a workstation at college using llama2:13b model.
+Please note that llama instance we are using is running in a workstation at college using llama2:13b model.
+
 The front end is run by jquery.
-The back-end is flask
-Audio transcription is done with vosk
+
+The back-end is flask.
+
+Audio transcription is done with vosk.
+
 Text intent classificaiton is done by llama2.
 
 
